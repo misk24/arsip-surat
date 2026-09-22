@@ -12,7 +12,7 @@ export async function POST(request: Request, { params }: Props) {
   try {
     const { id } = await params;
 
-    //1. Ambil data surat
+    // 1. Ambil data surat
     const { data: letter, error: letterError } = await supabase
       .from("letters")
       .select("*")
@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: Props) {
       );
     }
 
-    //2. Jangan OCR ulang kalau sudah pernah diproses
+    // 2. Jangan OCR ulang kalau sudah pernah diproses
     if (letter.ocr_processed_at) {
       return NextResponse.json({
         success: true,
@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: Props) {
       });
     }
 
-    //3. Download file dari Supabase Storage
+    // 3. Download file dari Supabase Storage
     const { data: fileData, error: fileError } = await supabase.storage
       .from("letters")
       .download(letter.file_path);
@@ -54,18 +54,20 @@ export async function POST(request: Request, { params }: Props) {
       );
     }
 
-    //4. Siapkan request ke OCR.space API
+    // 4. Siapkan request ke OCR.space API
     const formData = new FormData();
 
     formData.append("apikey", process.env.OCR_SPACE_API_KEY ?? "");
     formData.append("file", fileData, letter.file_name);
-    formData.append("language", "eng");
+    // Engine 2 supports automatic language detection.
+    // This is safer for Indonesian documents than forcing English OCR.
+    formData.append("language", "auto");
     formData.append("isOverlayRequired", "false");
     formData.append("detectOrientation", "true");
     formData.append("scale", "true");
     formData.append("OCREngine", "2");
 
-    //5. Kirim request ke OCR.space API
+    // 5. Kirim request ke OCR.space API
     const response = await fetch("https://api.ocr.space/parse/image", {
       method: "POST",
       body: formData,
@@ -77,7 +79,7 @@ export async function POST(request: Request, { params }: Props) {
 
     const result = await response.json();
 
-    //6. Cek error dari OCR.space API
+    // 6. Cek error dari OCR.space API
     if (result.IsErroredOnProcessing) {
       const message = Array.isArray(result.ErrorMessage)
         ? result.ErrorMessage.join(", ")
@@ -86,7 +88,7 @@ export async function POST(request: Request, { params }: Props) {
       throw new Error(message || "OCR gagal memproses dokumen.");
     }
 
-    //7. Ambil teks hasil OCR
+    // 7. Ambil teks hasil OCR
     const parsedText =
       result.ParsedResults?.map(
         (item: { ParsedText?: string }) => item.ParsedText ?? "",
@@ -100,13 +102,12 @@ export async function POST(request: Request, { params }: Props) {
 
     const parsedLetter = parseLetterText(parsedText);
 
-    //8. Simpan hasil OCR ke database
+    // 8. Simpan hasil OCR + hasil parsing ke database
     const { error: updateError } = await supabase
       .from("letters")
       .update({
         ocr_text: parsedText,
         ocr_processed_at: new Date().toISOString(),
-
         letter_number: parsedLetter.letterNumber,
         letter_date: parsedLetter.letterDate,
         subject: parsedLetter.subject,
@@ -119,7 +120,7 @@ export async function POST(request: Request, { params }: Props) {
       throw updateError;
     }
 
-    //9. Kembalikan hasil OCR ke frontend
+    // 9. Kembalikan hasil OCR ke frontend
     return NextResponse.json({
       success: true,
       text: parsedText,
