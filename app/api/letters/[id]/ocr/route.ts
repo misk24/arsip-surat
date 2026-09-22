@@ -103,7 +103,7 @@ export async function POST(request: Request, { params }: Props) {
     const parsedLetter = parseLetterText(parsedText);
 
     // 8. Simpan hasil OCR + hasil parsing ke database
-    const { error: updateError } = await supabase
+    const { data: updatedLetter, error: updateError } = await supabase
       .from("letters")
       .update({
         ocr_text: parsedText,
@@ -114,10 +114,16 @@ export async function POST(request: Request, { params }: Props) {
         sender: parsedLetter.sender,
         recipient: parsedLetter.recipient,
       })
-      .eq("id", id);
+      .eq("id", id)
+      .select("id, ocr_processed_at, ocr_text")
+      .single();
 
     if (updateError) {
       throw updateError;
+    }
+
+    if (!updatedLetter?.ocr_processed_at) {
+      throw new Error("Hasil OCR berhasil diproses, tetapi gagal disimpan ke database.");
     }
 
     // 9. Kembalikan hasil OCR ke frontend
