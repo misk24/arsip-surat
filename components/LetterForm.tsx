@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Letter = {
   id: string;
@@ -14,11 +14,11 @@ type Letter = {
   recipient: string | null;
 };
 
-type Props = {
+type LetterFormProps = {
   letter: Letter;
 };
 
-export default function LetterForm({ letter }: Props) {
+export default function LetterForm({ letter }: LetterFormProps) {
   const router = useRouter();
 
   const [type, setType] = useState<"incoming" | "outgoing">(letter.type);
@@ -35,52 +35,87 @@ export default function LetterForm({ letter }: Props) {
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  async function handleSave() {
-    setError("");
-    setIsSaving(true);
+  /*
+   * Sinkronkan form dengan data terbaru
+   * setelah OCR memperbarui database.
+   */
+  useEffect(() => {
+    setType(letter.type);
+    setLetterNumber(letter.letter_number ?? "");
+    setLetterDate(letter.letter_date ?? "");
+    setSubject(letter.subject ?? "");
+    setSender(letter.sender ?? "");
+    setRecipient(letter.recipient ?? "");
+  }, [
+    letter.type,
+    letter.letter_number,
+    letter.letter_date,
+    letter.subject,
+    letter.sender,
+    letter.recipient,
+  ]);
 
-    const { error } = await supabase
-      .from("letters")
-      .update({
-        type,
-        letter_number: letterNumber || null,
-        letter_date: letterDate || null,
-        subject: subject || null,
-        sender: type === "incoming" ? sender || null : null,
-        recipient: type === "outgoing" ? recipient || null : null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", letter.id);
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-    if (error) {
+    try {
+      setIsSaving(true);
+      setError("");
+      setSuccess("");
+
+      const { error } = await supabase
+        .from("letters")
+        .update({
+          type,
+
+          letter_number: letterNumber.trim() || null,
+
+          letter_date: letterDate || null,
+
+          subject: subject.trim() || null,
+
+          sender: type === "incoming" ? sender.trim() || null : null,
+
+          recipient: type === "outgoing" ? recipient.trim() || null : null,
+
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", letter.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setSuccess("Data surat berhasil disimpan.");
+
+      router.refresh();
+    } catch (error) {
       console.error(error);
-      setError("Gagal menyimpan data surat.");
+
+      setError("Data surat gagal disimpan.");
+    } finally {
       setIsSaving(false);
-      return;
     }
-
-    setIsSaving(false);
-
-    router.push("/");
-    router.refresh();
   }
 
   return (
-    <div className="space-y-5">
-      {/* Jenis Surat */}
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="text-sm font-medium text-gray-900">Jenis Surat</label>
+        <label className="mb-2 block text-sm font-medium text-gray-900">
+          Jenis Surat
+        </label>
 
-        <div className="mt-2 flex gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setType("incoming")}
             className={[
-              "flex-1 rounded-lg border px-4 py-3 text-sm",
+              "rounded-lg border px-4 py-2.5 text-sm font-medium transition",
               type === "incoming"
                 ? "border-gray-900 bg-gray-900 text-white"
-                : "border-gray-300 bg-white text-gray-700",
+                : "border-gray-200 bg-white text-gray-600 hover:border-gray-400",
             ].join(" ")}
           >
             Surat Masuk
@@ -90,10 +125,10 @@ export default function LetterForm({ letter }: Props) {
             type="button"
             onClick={() => setType("outgoing")}
             className={[
-              "flex-1 rounded-lg border px-4 py-3 text-sm",
+              "rounded-lg border px-4 py-2.5 text-sm font-medium transition",
               type === "outgoing"
                 ? "border-gray-900 bg-gray-900 text-white"
-                : "border-gray-300 bg-white text-gray-700",
+                : "border-gray-200 bg-white text-gray-600 hover:border-gray-400",
             ].join(" ")}
           >
             Surat Keluar
@@ -101,46 +136,46 @@ export default function LetterForm({ letter }: Props) {
         </div>
       </div>
 
-      {/* Nomor */}
       <div>
         <label
-          htmlFor="letter_number"
-          className="text-sm font-medium text-gray-900"
+          htmlFor="letter-number"
+          className="mb-2 block text-sm font-medium text-gray-900"
         >
           Nomor Surat
         </label>
 
         <input
-          id="letter_number"
+          id="letter-number"
           type="text"
           value={letterNumber}
-          onChange={(e) => setLetterNumber(e.target.value)}
-          placeholder="Contoh: 005/123/DISDIK/2026"
-          className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-900"
+          onChange={(event) => setLetterNumber(event.target.value)}
+          placeholder="Contoh: 123/ABC/IX/2026"
+          className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none transition focus:border-gray-900"
         />
       </div>
 
-      {/* Tanggal */}
       <div>
         <label
-          htmlFor="letter_date"
-          className="text-sm font-medium text-gray-900"
+          htmlFor="letter-date"
+          className="mb-2 block text-sm font-medium text-gray-900"
         >
           Tanggal Surat
         </label>
 
         <input
-          id="letter_date"
+          id="letter-date"
           type="date"
           value={letterDate}
-          onChange={(e) => setLetterDate(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-900"
+          onChange={(event) => setLetterDate(event.target.value)}
+          className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none transition focus:border-gray-900"
         />
       </div>
 
-      {/* Perihal */}
       <div>
-        <label htmlFor="subject" className="text-sm font-medium text-gray-900">
+        <label
+          htmlFor="subject"
+          className="mb-2 block text-sm font-medium text-gray-900"
+        >
           Perihal
         </label>
 
@@ -148,47 +183,48 @@ export default function LetterForm({ letter }: Props) {
           id="subject"
           type="text"
           value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          placeholder="Perihal surat"
-          className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-900"
+          onChange={(event) => setSubject(event.target.value)}
+          placeholder="Contoh: Undangan Rapat"
+          className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none transition focus:border-gray-900"
         />
       </div>
 
-      {/* Asal */}
       {type === "incoming" && (
         <div>
-          <label htmlFor="sender" className="text-sm font-medium text-gray-900">
-            Asal Surat
+          <label
+            htmlFor="sender"
+            className="mb-2 block text-sm font-medium text-gray-900"
+          >
+            Asal / Pengirim
           </label>
 
           <input
             id="sender"
             type="text"
             value={sender}
-            onChange={(e) => setSender(e.target.value)}
-            placeholder="Nama instansi / pengirim"
-            className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-900"
+            onChange={(event) => setSender(event.target.value)}
+            placeholder="Contoh: Dinas Pendidikan"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none transition focus:border-gray-900"
           />
         </div>
       )}
 
-      {/* Tujuan */}
       {type === "outgoing" && (
         <div>
           <label
             htmlFor="recipient"
-            className="text-sm font-medium text-gray-900"
+            className="mb-2 block text-sm font-medium text-gray-900"
           >
-            Tujuan Surat
+            Tujuan / Penerima
           </label>
 
           <input
             id="recipient"
             type="text"
             value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            placeholder="Nama instansi / penerima"
-            className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-900"
+            onChange={(event) => setRecipient(event.target.value)}
+            placeholder="Contoh: Kecamatan Selong"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none transition focus:border-gray-900"
           />
         </div>
       )}
@@ -199,14 +235,19 @@ export default function LetterForm({ letter }: Props) {
         </div>
       )}
 
+      {success && (
+        <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
+          {success}
+        </div>
+      )}
+
       <button
-        type="button"
-        onClick={handleSave}
+        type="submit"
         disabled={isSaving}
-        className="w-full rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isSaving ? "Menyimpan..." : "Simpan Surat"}
+        {isSaving ? "Menyimpan..." : "Simpan Data Surat"}
       </button>
-    </div>
+    </form>
   );
 }

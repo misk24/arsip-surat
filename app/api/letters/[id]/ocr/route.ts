@@ -1,3 +1,4 @@
+import { parseLetterText } from "@/lib/parse-letter";
 import { supabase } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
@@ -30,6 +31,13 @@ export async function POST(request: Request, { params }: Props) {
       return NextResponse.json({
         success: true,
         text: letter.ocr_text ?? "",
+        parsed: {
+          letterNumber: letter.letter_number,
+          letterDate: letter.letter_date,
+          subject: letter.subject,
+          sender: letter.sender,
+          recipient: letter.recipient,
+        },
         cached: true,
       });
     }
@@ -90,12 +98,20 @@ export async function POST(request: Request, { params }: Props) {
       throw new Error("Tidak ada teks yang terdeteksi.");
     }
 
+    const parsedLetter = parseLetterText(parsedText);
+
     //8. Simpan hasil OCR ke database
     const { error: updateError } = await supabase
       .from("letters")
       .update({
         ocr_text: parsedText,
         ocr_processed_at: new Date().toISOString(),
+
+        letter_number: parsedLetter.letterNumber,
+        letter_date: parsedLetter.letterDate,
+        subject: parsedLetter.subject,
+        sender: parsedLetter.sender,
+        recipient: parsedLetter.recipient,
       })
       .eq("id", id);
 
@@ -107,6 +123,7 @@ export async function POST(request: Request, { params }: Props) {
     return NextResponse.json({
       success: true,
       text: parsedText,
+      parsed: parsedLetter,
       cached: false,
     });
   } catch (error) {

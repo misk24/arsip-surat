@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type OCRButtonProps = {
@@ -11,6 +12,7 @@ export default function OCRButton({ letterId, hasOCR }: OCRButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
+  const router = useRouter();
 
   async function handleOCR() {
     try {
@@ -28,6 +30,7 @@ export default function OCRButton({ letterId, hasOCR }: OCRButtonProps) {
       }
 
       setText(result.text || "");
+      router.refresh(); // Refresh halaman untuk menampilkan hasil OCR yang baru
     } catch (error) {
       console.error(error);
 
