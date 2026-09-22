@@ -1,4 +1,5 @@
 import LetterForm from "@/components/LetterForm";
+import OCRButton from "@/components/OCRButton";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 
@@ -95,6 +96,23 @@ export default async function ReviewPage({ params }: Props) {
 
           {/* Form */}
           <section className="rounded-2xl border border-gray-200 bg-white p-5 lg:p-6">
+            <div className="mb-6 border-b border-gray-200 pb-6">
+              <div className="mb-3">
+                <p className="text-sm font-medium text-gray-900">
+                  Pembacaaan Otomatis
+                </p>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Gunakan fitur ini untuk membaca teks dari dokumen secara
+                  otomatis.
+                </p>
+              </div>
+
+              <OCRButton
+                letterId={letter.id}
+                hasOCR={Boolean(letter.ocr_processed_at)}
+              />
+            </div>
             <LetterForm letter={letter} />
           </section>
         </div>
