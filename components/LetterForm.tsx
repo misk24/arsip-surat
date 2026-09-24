@@ -14,11 +14,20 @@ type Letter = {
   recipient: string | null;
 };
 
-type LetterFormProps = {
-  letter: Letter;
+type OCRResult = {
+  letterNumber: string | null;
+  letterDate: string | null;
+  subject: string | null;
+  sender: string | null;
+  recipient: string | null;
 };
 
-export default function LetterForm({ letter }: LetterFormProps) {
+type LetterFormProps = {
+  letter: Letter;
+  ocrResult?: OCRResult | null;
+};
+
+export default function LetterForm({ letter, ocrResult }: LetterFormProps) {
   const router = useRouter();
 
   const [type, setType] = useState<"incoming" | "outgoing">(letter.type);
@@ -42,6 +51,15 @@ export default function LetterForm({ letter }: LetterFormProps) {
    * setelah OCR memperbarui database.
    */
   useEffect(() => {
+    if (ocrResult) {
+      setLetterNumber(ocrResult.letterNumber ?? "");
+      setLetterDate(ocrResult.letterDate ?? "");
+      setSubject(ocrResult.subject ?? "");
+      setSender(ocrResult.sender ?? "");
+      setRecipient(ocrResult.recipient ?? "");
+      return;
+    }
+
     setType(letter.type);
     setLetterNumber(letter.letter_number ?? "");
     setLetterDate(letter.letter_date ?? "");
@@ -49,6 +67,7 @@ export default function LetterForm({ letter }: LetterFormProps) {
     setSender(letter.sender ?? "");
     setRecipient(letter.recipient ?? "");
   }, [
+    ocrResult,
     letter.type,
     letter.letter_number,
     letter.letter_date,
