@@ -6,9 +6,16 @@ import { useState } from "react";
 type OCRButtonProps = {
   letterId: string;
   hasOCR: boolean;
+  onResult: (result: {
+    letterNumber: string | null;
+    letterDate: string | null;
+    subject: string | null;
+    sender: string | null;
+    recipient: string | null;
+  }) => void;
 };
 
-export default function OCRButton({ letterId, hasOCR }: OCRButtonProps) {
+export default function OCRButton({ letterId, hasOCR, onResult }: OCRButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -30,7 +37,8 @@ export default function OCRButton({ letterId, hasOCR }: OCRButtonProps) {
       }
 
       setText(result.text || "");
-      router.refresh(); // Refresh halaman untuk menampilkan hasil OCR yang baru
+      onResult(result.parsed);
+      router.refresh(); // Tetap sinkronkan data server
     } catch (error) {
       console.error(error);
 
