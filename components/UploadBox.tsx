@@ -146,7 +146,7 @@ export default function UploadBox() {
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.jpg,.jpeg,.png"
+          accept="application/pdf,.pdf,image/jpeg,image/png,.jpg,.jpeg,.png"
           onChange={handleInputChange}
           className="hidden"
           disabled={isUploading}
